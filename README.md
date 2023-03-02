@@ -17,7 +17,7 @@ This FastAPI app creates and solves mazes using various algorithms.
 5. Generate maze files usign the form provided in `/maze_generator`.
 6. Upload a maze file and select a pathing algorithm to see the solution in `/upload_maze`.
 
-### containerized
+### Docker
 
 1. Clone this repository.
 2. Build the container using the following command: `docker build -t maze_solver .`.
@@ -31,12 +31,14 @@ This FastAPI app creates and solves mazes using various algorithms.
 `http://localhost:8000/maze_generator` to generate the maze files.
 
 The maze generator can make various mazes, taking parameters for how strict the pathing is, and the probability of having weighted cells.
+A Demo of the maze_generator can be found [`here`](https://maze-solver-4r64swfrtq-uc.a.run.app/maze_generator)
 
 ![50x50 Weightless Maze](example/0796e10d-f39e-47b7-9a5e-691593417269.png "50x50 Weightless Maze")
 
 `http://localhost:8000/upload_maze` to solve the maze file using a pathing algorithm.
-
 Using Djikstra, the following solution can be obtained.
+
+A Demo of the maze_solver can be found [`here`](https://maze-solver-4r64swfrtq-uc.a.run.app/upload_maze)
 
 ![50x50 Weightless Maze Solution](example/f9774cde-b79e-489c-a1b5-4c427c35cc65_maze_0_solution.png "50x50 Weightless Maze Solution")
 
