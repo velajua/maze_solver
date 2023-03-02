@@ -14,8 +14,17 @@ This FastAPI app creates and solves mazes using various algorithms.
 2. Install the requirements using `pip install -r requirements.txt`.
 3. Run the app using the following command: `uvicorn maze_app:app --reload`.
 4. Navigate to `http://localhost:8000` in your web browser.
-5. Generate maze files usign the form provided.
-6. Upload a maze file and select a pathing algorithm to see the solution.
+5. Generate maze files usign the form provided in `/maze_generator`.
+6. Upload a maze file and select a pathing algorithm to see the solution in `/uploud_maze`.
+
+### containerized
+
+1. Clone this repository.
+2. Build the container using the following command: `docker build -t maze_solver .`.
+3. Run the container using the following command: `docker run -it -p 8000:8000 maze_solver`.
+4. Navigate to `http://localhost:8000` in your web browser.
+5. Generate maze files usign the form provided in `/maze_generator`.
+6. Upload a maze file and select a pathing algorithm to see the solution in `/uploud_maze`.
 
 ## Usage
 
