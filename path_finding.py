@@ -21,15 +21,19 @@ def floyd_warshall(graph: List[List[Union[int, float]]],
             the edge from node i to node j. A value of float('inf') represents
             that there is no edge between the nodes.
         type (str, optional): The format to return the shortest path in.
-            Valid options are 'matrix', 'letters', and 'coords'. Defaults to 'matrix'.
+            Valid options are 'matrix', 'letters', and 'coords'.
+            Defaults to 'matrix'.
 
     Returns:
-        Union[List[List[Union[int, float]]], Dict[str, Dict[str, Union[int, float]]]]:
-        A matrix of the shortest path between all pairs of nodes if type is 'matrix'.
-        A dictionary representation of the graph where each key is a node and the value
-        is a dictionary of its neighbors and their weights if type is 'letters' or 'coords'.
+        Union[List[List[Union[int, float]]],
+            Dict[str, Dict[str, Union[int, float]]]]:
+        A matrix of the shortest path between all pairs of nodes
+            if type is 'matrix'.
+        A dictionary representation of the graph where each key
+            is a node and the value is a dictionary of its neighbors
+            and their weights if type is 'letters' or 'coords'.
     """
-    
+
     def floyd_warshall_to_dict(matrix: List[List[Union[int, float]]],
                                type: str = 'letters') -> Dict[
                                    str, Dict[str, Union[int, float]]]:
@@ -37,17 +41,20 @@ def floyd_warshall(graph: List[List[Union[int, float]]],
         Converts a matrix to a dictionary representation of a graph.
 
         Args:
-            matrix (List[List[Union[int, float]]]): A square matrix representing
-                the graph where the value at index (i, j) represents the weight of
-                the edge from node i to node j. A value of float('inf') represents
-                that there is no edge between the nodes.
-            type (str, optional): The format to return the graph in. Valid options
-                are 'letters' and 'coords'. Defaults to 'letters'.
+            matrix (List[List[Union[int, float]]]): A square matrix
+                representing the graph where the value at index (i, j)
+                represents the weight of the edge from node i to node j.
+                A value of float('inf') represents that there is no
+                edge between the nodes.
+            type (str, optional): The format to return the graph in.
+                Valid options are 'letters' and 'coords'.
+                Defaults to 'letters'.
 
         Returns:
-            Dict[str, Dict[str, Union[int, float]]]: A dictionary representation of
-            the graph where each key is a node and the value is a dictionary of
-            its neighbors and their weights.
+            Dict[str, Dict[str, Union[int, float]]]: A dictionary
+            representation of the graph where each key is a node
+            and the value is a dictionary of its neighbors and
+            their weights.
         """
         if type == 'letters':
             nodes = [chr(i) for i in range(ord('A'), ord('A') + len(matrix))]
@@ -70,10 +77,11 @@ def floyd_warshall(graph: List[List[Union[int, float]]],
                         graph[(i, j)] = {}
                         for k in range(len(row)):
                             if k != j and matrix[j][k] != float('inf'):
-                                graph[(i, j)][(j, k)] = matrix[i][j] + matrix[j][k]
+                                graph[(i, j)][
+                                    (j, k)] = matrix[i][j] + matrix[j][k]
             return graph
         else:
-            return 'Invalid type' 
+            return 'Invalid type'
 
     n = len(graph)
     dist = [[math.inf] * n for _ in range(n)]
@@ -89,12 +97,15 @@ def floyd_warshall(graph: List[List[Union[int, float]]],
                 dist[i][j] = min(dist[i][j], dist[i][k] + dist[k][j])
 
     return dist if type == 'matrix' else floyd_warshall_to_dict(
-        dist, 'letters') if type == 'letters' else floyd_warshall_to_dict(dist, 'coords')
+        dist, 'letters') if type == 'letters' else floyd_warshall_to_dict(
+            dist, 'coords')
 
 
 def djikstra(graph: Dict[str, Dict[str, float]], start: str,
              goal: str) -> Union[None, Dict[str, Union[List[str], float]]]:
-    """Finds the shortest path between two nodes in a graph using Dijkstra's algorithm.
+    """
+    Finds the shortest path between two nodes in a graph
+    using Dijkstra's algorithm.
 
     Args:
         graph: A dictionary representing the graph with nodes as keys
@@ -123,30 +134,34 @@ def djikstra(graph: Dict[str, Dict[str, float]], start: str,
     return None
 
 
-def a_star(graph: Dict[Tuple[int, int], Dict[Tuple[int, int], int]], 
-           start: Tuple[int, int], 
-           goal: Tuple[int, int], 
+def a_star(graph: Dict[Tuple[int, int], Dict[Tuple[int, int], int]],
+           start: Tuple[int, int],
+           goal: Tuple[int, int],
            heuristic: Callable[[Tuple[int, int], Tuple[int, int]], int]
            = lambda a, b: abs(a[0] - b[0]) + abs(a[1] - b[1])
            ) -> Dict[str, Union[List[Tuple[int, int]], int]]:
     """
-    A* algorithm implementation for finding the shortest path between two nodes in a graph.
+    A* algorithm implementation for finding the shortest path between
+    two nodes in a graph.
 
     Args:
-        graph: A dictionary containing the graph in the form of an adjacency list.
-            Each node is a tuple of two integers representing its (x, y) coordinates
-            and each edge is a dictionary containing the neighbor node as key and the
+        graph: A dictionary containing the graph in the form of
+            an adjacency list. Each node is a tuple of two integers
+            representing its (x, y) coordinates and each edge is a
+            dictionary containing the neighbor node as key and the
             cost of the edge as value.
-        start: A tuple of two integers representing the starting node's (x, y) coordinates.
-        goal: A tuple of two integers representing the goal node's (x, y) coordinates.
-        heuristic: A heuristic function that takes two nodes as input and returns
-            an estimate of the distance between them. The default heuristic is Manhattan
-            distance.
+        start: A tuple of two integers representing the starting
+            node's (x, y) coordinates. goal: A tuple of two integers
+            representing the goal node's (x, y) coordinates.
+        heuristic: A heuristic function that takes two nodes as input
+            and returns an estimate of the distance between them.
+            The default heuristic is Manhattan distance.
 
     Returns:
-        A dictionary containing the shortest path and its cost from the starting node
-        to the goal node. The 'path' key contains a list of tuples representing the nodes
-        along the path in the order they were visited, and the 'cost' key contains
+        A dictionary containing the shortest path and its cost
+        from the starting node to the goal node. The 'path' key
+        contains a list of tuples representing the nodes along the path
+        in the order they were visited, and the 'cost' key contains
         the total cost of the path.
     """
     frontier = PriorityQueue()
@@ -224,7 +239,7 @@ def dfs(graph: Dict[Tuple, Dict[Tuple, int]], start: Tuple,
     node to goal node in given graph.
 
     Args:
-        graph: The graph to search, represented as a dictionary where 
+        graph: The graph to search, represented as a dictionary where
             ach key is a node and the corresponding value is a dictionary
             of its neighbors and edge costs.
         start: The starting node for the search.
@@ -264,8 +279,8 @@ def bellman_ford(graph: Dict[Any, Dict[Any, Union[int, float]]], start: Any,
 
     Parameters:
     - `graph` (Dict): A dictionary representation of the graph where the keys
-        represent the nodes and the values represent the outgoing edges from each
-        node with their weights.
+        represent the nodes and the values represent the outgoing
+        edges from each node with their weights.
     - `start` (Any): The starting node from which to find the shortest path.
     - `goal` (Any): The goal node to which the shortest path needs to be found.
 
@@ -298,37 +313,38 @@ def bellman_ford(graph: Dict[Any, Dict[Any, Union[int, float]]], start: Any,
     return {'path': path, 'cost': cost}
 
 
-def bidirectional_search(graph: Dict[Any, Dict[Any, float]], 
+def bidirectional_search(graph: Dict[Any, Dict[Any, float]],
                          start: Any, goal: Any) -> Dict[str, Any]:
     """
     Finds the shortest path between `start` and `goal` nodes in an
     undirected graph `graph` using bidirectional search algorithm.
-    
+
     Args:
     - graph: A dictionary representing the undirected graph, where
         the keys are the nodes and the values are dictionaries
         representing the neighbors and edge weights of each node.
     - start: The node to start the search from.
     - goal: The node to find the shortest path to.
-    
+
     Returns:
     - A dictionary containing the shortest path and its cost,
         with keys 'path' and 'cost'.
-    """    
+    """
     def get_path(forward_came_from: Dict[Any, Any],
-                 backward_came_from: Dict[Any, Any], intersection: Any) -> List:
+                 backward_came_from: Dict[Any, Any],
+                 intersection: Any) -> List:
         """
-        Given the dictionaries of visited nodes and their parent 
+        Given the dictionaries of visited nodes and their parent
         nodes from both directions, and the intersection node that was found,
         constructs the shortest path between `start` and `goal`.
-        
+
         Args:
         - forward_came_from: A dictionary representing the visited
             nodes and their parent nodes during the forward search.
         - backward_came_from: A dictionary representing the visited
             nodes and their parent nodes during the backward search.
         - intersection: The node that was found in both searches.
-        
+
         Returns:
         - A list of nodes representing the shortest path
             between `start` and `goal`.
@@ -352,7 +368,8 @@ def bidirectional_search(graph: Dict[Any, Dict[Any, float]],
     intersection = None
     while forward_queue and backward_queue:
         if intersection:
-            path = get_path(forward_came_from, backward_came_from, intersection)
+            path = get_path(forward_came_from, backward_came_from,
+                            intersection)
             cost = sum(graph[node1][node2] for node1, node2 in zip(
                 path[:-1], path[1:]))
             return {'path': path, 'cost': cost}
@@ -365,7 +382,8 @@ def bidirectional_search(graph: Dict[Any, Dict[Any, float]],
                 intersection = neighbor
                 break
         if intersection:
-            path = get_path(forward_came_from, backward_came_from, intersection)
+            path = get_path(forward_came_from, backward_came_from,
+                            intersection)
             cost = sum(graph[node1][node2] for node1, node2 in zip(
                 path[:-1], path[1:]))
             return {'path': path, 'cost': cost}
@@ -381,24 +399,27 @@ def bidirectional_search(graph: Dict[Any, Dict[Any, float]],
 
 
 def beam_search(graph: Dict[str, Dict[str, int]], start: str, end: str,
-                beam_width: int = 500) -> Dict[str, Union[None, List[str], int]]:
+                beam_width: int = 500) -> Dict[
+                    str, Union[None, List[str], int]]:
     """
     Given a weighted graph, a start node, an end node and a beam width,
-    returns the shortest path between the start and end node as well as the cost
-    of the path using beam search algorithm.
+    returns the shortest path between the start and end node as well
+    as the cost of the path using beam search algorithm.
 
     Args:
         graph (Dict[str, Dict[str, int]]): A weighted graph represented
             as a dictionary where keys are the node names and values are
-            dictionaries representing the neighbors and their corresponding edge weights.
+            dictionaries representing the neighbors and their
+            corresponding edge weights.
         start (str): The starting node name.
         end (str): The ending node name.
         beam_width (int, optional): The width of the beam. Defaults to 2.
 
     Returns:
         Dict[str, Union[None, List[str], int]]: A dictionary with the shortest
-            path as a list of node names under the key 'path', the cost of the path
-            under the key 'cost', and None for both if no path exists.
+            path as a list of node names under the key 'path',
+            the cost of the path under the key 'cost', and None for
+            both if no path exists.
     """
     visited = set()
     queue = [(0, [start])]
