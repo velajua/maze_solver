@@ -9,25 +9,29 @@ from typing import Dict, Tuple, Optional, Union, List
 FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else '/tmp/'
 
 
-def generate_maze_(width: int, height: int, strict: float = 0.9, add_weights_prob: float = 0.2,
-                   name_: str = None) -> Dict[Tuple[int, int], Dict[Tuple[int, int], int]]:
+def generate_maze_(width: int, height: int, strict: float = 0.9,
+                   add_weights_prob: float = 0.2, name_: str = None
+                   ) -> Dict[Tuple[int, int], Dict[Tuple[int, int], int]]:
     """
-    Generates a maze using a modified version of the Depth-First Search algorithm.
+    Generates a maze using a modified version of the
+    Depth-First Search algorithm.
 
     Args:
         width (int): The width of the maze.
         height (int): The height of the maze.
-        strict (float, optional): The strictness of the maze. A value between 0 and 1,
-            where 1 generates a perfect maze. Defaults to 0.9.
-        add_weights_prob (float, optional): The probability of adding weights to the edges.
-            A value between 0 and 1. Defaults to 0.2.
-        name_ (str, optional): The name of the file where the maze will be saved.
-            Defaults to None.
+        strict (float, optional): The strictness of the maze.
+            A value between 0 and 1, where 1 generates a perfect maze.
+            Defaults to 0.9.
+        add_weights_prob (float, optional): The probability of adding
+            weights to the edges. A value between 0 and 1. Defaults to 0.2.
+        name_ (str, optional): The name of the file where the maze
+            will be saved. Defaults to None.
 
     Returns:
-        Dict[Tuple[int, int], Dict[Tuple[int, int], int]]: The maze represented as a
-            dictionary of dictionaries. The keys of the outer dictionary are the coordinates
-            of the cells, and the values are dictionaries containing the neighbors of the
+        Dict[Tuple[int, int], Dict[Tuple[int, int], int]]:
+            The maze represented as a dictionary of dictionaries. The keys
+            of the outer dictionary are the coordinates of the cells, and
+            the values are dictionaries containing the neighbors of the
             cells and the weights of the edges that connect them.
     """
     maze = {}
@@ -79,13 +83,15 @@ def generate_maze_(width: int, height: int, strict: float = 0.9, add_weights_pro
 
 def draw_maze(maze: Dict[Tuple[int, int], Dict[Tuple[int, int], int]],
               path: Optional[Dict[str, Union[int, List[Tuple[int, int]]]]
-                             ] = None, name_: str = 'maze') -> Tuple[Image.Image, str]:
+                             ] = None, name_: str = 'maze') -> Tuple[
+                                 Image.Image, str]:
     """
     Draws a maze represented as a dictionary of coordinates and walls.
 
     Args:
         maze: A dictionary of coordinates and their connected walls.
-        path: An optional dictionary containing the path taken through the maze and its cost.
+        path: An optional dictionary containing the path taken
+            through the maze and its cost.
         name_: An optional name for the saved image file.
 
     Returns:
@@ -140,21 +146,39 @@ def draw_maze(maze: Dict[Tuple[int, int], Dict[Tuple[int, int], int]],
                     img_draw.text((x1, y1), text=str(wall), fill='black')
                     img_draw = ImageDraw.Draw(img)
                     if dx > 0:
-                        img_draw.polygon([(x2-wall_size*2, y2-wall_size*2), (x2-wall_size*2, y2), (x2-wall_size, y2-wall_size)], fill="black")
+                        img_draw.polygon([(x2-wall_size*2, y2-wall_size*2),
+                                          (x2-wall_size*2, y2),
+                                          (x2-wall_size, y2-wall_size)],
+                                         fill="black")
                     elif dx < 0:
-                        img_draw.polygon([(x2-wall_size, y2), (x2-wall_size, y2-wall_size*2), (x2-wall_size*2, y2-wall_size)], fill="black")
+                        img_draw.polygon([(x2-wall_size, y2),
+                                          (x2-wall_size, y2-wall_size*2),
+                                          (x2-wall_size*2, y2-wall_size)],
+                                         fill="black")
                     elif dy > 0:
-                        img_draw.polygon([(x2-wall_size*2, y1+wall_size*3), (x2, y1+wall_size*3), (x2-wall_size, y1+wall_size*4)], fill="black")
+                        img_draw.polygon([(x2-wall_size*2, y1+wall_size*3),
+                                          (x2, y1+wall_size*3),
+                                          (x2-wall_size, y1+wall_size*4)],
+                                         fill="black")
                     elif dy < 0:
-                        img_draw.polygon([(x2, y1+wall_size*4), (x2-wall_size*2, y1+wall_size*4), (x2-wall_size, y1+wall_size*3)], fill="black")
-    img_draw.ellipse((cell_size//2-3, cell_size//2-3, cell_size//2+3, cell_size//2+3), fill="green", outline="green")
-    img_draw.ellipse((image_width-cell_size//2-3, image_height-cell_size//2-3, image_width-cell_size//2+3, image_height-cell_size//2+3), fill="red", outline="red")
+                        img_draw.polygon([(x2, y1+wall_size*4),
+                                          (x2-wall_size*2, y1+wall_size*4),
+                                          (x2-wall_size, y1+wall_size*3)],
+                                         fill="black")
+    img_draw.ellipse((cell_size//2-3, cell_size//2-3, cell_size//2+3,
+                      cell_size//2+3), fill="green", outline="green")
+    img_draw.ellipse((image_width-cell_size//2-3, image_height-cell_size//2-3,
+                      image_width-cell_size//2+3, image_height-cell_size//2+3),
+                     fill="red", outline="red")
     if name_ == 'maze':
         name_ = str(uuid4()) + '_' + name_
     if path:
-        path_coords = [(coord[0] * cell_size + cell_size // 2, coord[1] * cell_size + cell_size // 2) for coord in path['path']]
+        path_coords = [(coord[0] * cell_size + cell_size // 2,
+                        coord[1] * cell_size + cell_size // 2)
+                       for coord in path['path']]
         img_draw.line(path_coords, fill="blue", width=4)
-        img.save(f := os.path.join(FILE_PREF, f"{name_}_{path.get('cost', '')}_solution.png"))
+        img.save(f := os.path.join(
+            FILE_PREF, f"{name_}_{path.get('cost', '')}_solution.png"))
     else:
         img.save(f := os.path.join(FILE_PREF, f"{name_}.png"))
     return img, f
