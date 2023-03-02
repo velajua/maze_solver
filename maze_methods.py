@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 
 from typing import Dict, Tuple, Optional, Union, List
 
-FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else 'tmp/'
+FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else '/tmp/'
 
 
 def generate_maze_(width: int, height: int, strict: float = 0.9, add_weights_prob: float = 0.2,
