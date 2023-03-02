@@ -1,0 +1,162 @@
+<!-- This code represents an HTML form for uploading a JSON maze file and solving it using a specified algorithm.
+    The form consists of two columns, the left column contains instructions and descriptions while the right column contains the form fields.
+
+The CSS styles define the layout of the form using flexbox. The form-row class specifies that the form should be displayed as a flex container with a wrap property.
+The form-column class specifies that each column should have a flex-basis of 50% and a padding-right of 20px.
+
+The form element is defined with the action "/maze_solver" and method "POST" for submitting the form data to the server.
+The enctype attribute is set to "multipart/form-data" to allow for file uploads.
+
+The form contains several input fields for uploading the JSON maze file, selecting the algorithm to solve the maze,
+specifying the starting and ending coordinates, and selecting the type of download.
+The algorithm type is represented by a range input with a minimum value of 0 and a maximum value of 6.
+The starting and ending coordinates are represented by text inputs with a pattern attribute that requires a comma-separated pair of integers.
+The display solved maze option is represented by a checkbox input.
+
+The script section contains two event listeners. The first event listener listens for changes to the solver algorithm
+range input and updates the solver label with the selected algorithm name.
+The second event listener listens for the form submission event and checks for errors, such as a missing or incorrect file type.
+If there are errors, an error message is displayed below the form.
+
+There is also a third event listener that listens for changes to the download range input and updates the download label with the selected download type.
+
+Overall, this code creates a simple HTML form that allows users to upload a JSON maze file,
+select an algorithm to solve the maze, specify the starting and ending coordinates, and select the type of download.
+The form includes error checking and dynamically updates labels based on user input. -->
+<html>
+    <head>
+        <title>Maze Solver</title>
+        <style>
+            .form-row {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            .form-column {
+                flex-basis: 50%;
+                padding-right: 20px;
+                box-sizing: border-box;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            label, input {
+                margin-bottom: 10px;
+                display: block;
+            }
+            .error {
+                color: rgb(255, 0, 0);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>--Maze Solver--</h1>
+        <p>Solves the JSON maze file from the starting to the ending coordinates using the specified algorithm</p>
+        <form action="/maze_solver" method="POST" enctype="multipart/form-data">
+            <div class="form-row">
+                <div class="form-column">
+                    <p>Upload a JSON maze file</p>
+                    <p>Select the algorithm type to solve the maze:</p>
+                    <p>--------------------------------------------------------------------</p>
+                    <p>Starting coordinates. E.j: 0, 0</p>
+                    <p>Ending coordinates. E.j: 49, 49</p>
+                    <p>--------------------------------------------------------------------</p>
+                    <p>Check to also display the solved maze image along with the JSON solution</p>
+                    <p>The maze files to download</p>
+                </div>
+                <div class="form-column">
+                    <input type="file" name="file" id="file"/>
+                    <label for="solve_algorithm">Solver Algorithm:</label>
+                    <span id="solver_label">Djikstra</span>
+                    <input type="range" id="solve_algorithm" name="solve_algorithm" min="0" max="6" step="1" value="0">
+                    <label for="start_coords">Starting Coordinates:</label>
+                    <input type="text" id="start_coords" name="start_coords" pattern="\d+,\d+" required>
+                    <label for="end_coords">Ending Coordinates:</label>
+                    <input type="text" id="end_coords" name="end_coords" pattern="\d+,\d+" required>
+                    <label for="img_show">Display Solved Maze:</label>
+                    <input type="checkbox" id="img_show" name="img_show" value="true">
+                    <label for="download">Download Type:</label>
+                    <span id="download_label">Do not Download</span>
+                    <input type="range" id="download" name="download" min="0" max="3" step="1" value="0">
+                </div>
+            </div>
+            <input type="submit" value="Submit"/>
+        </form>
+        <script>
+            const form = document.querySelector('form');
+            const error = document.createElement('p');
+            error.classList.add('error');
+            
+            solve_algorithm.addEventListener('input', () => {
+                switch (parseInt(solve_algorithm.value)) {
+                    case 0:
+                        solver_label.innerHTML = 'Djikstra';
+                        break;
+                    case 1:
+                        solver_label.innerHTML = 'A*';
+                        break;
+                    case 2:
+                        solver_label.innerHTML = 'BFS';
+                        break;
+                    case 3:
+                        solver_label.innerHTML = 'DFS'
+                        break;
+                    case 4:
+                        solver_label.innerHTML = 'Bellman Ford'
+                        break;
+                    case 5:
+                        solver_label.innerHTML = 'Bidirectional Search'
+                        break;
+                    case 6:
+                        solver_label.innerHTML = 'Beam Search'
+                        break;
+                    default:
+                        solver_label.innerHTML = 'Djikstra';
+                }
+            });
+            
+            form.addEventListener('submit', (event) => {
+                let hasErrors = false;
+                error.innerHTML = '';
+                const fileInput = document.querySelector('input[type="file"]');
+                const file = fileInput.files[0];
+                const fileType = file ? file.type : '';
+            
+                if (!file) {
+                    error.innerHTML += 'Please select a file.<br>';
+                    hasErrors = true;
+                    event.preventDefault();
+                } else if (fileType !== 'application/json') {
+                    error.innerHTML += 'File must be a JSON file.<br>';
+                    hasErrors = true;
+                    event.preventDefault();
+                }
+            
+                if (hasErrors) {
+                    form.appendChild(error);
+                }
+            });
+
+            download.addEventListener('input', () => {
+                switch (parseInt(download.value)) {
+                    case 0:
+                        download_label.innerHTML = 'Do not Download';
+                        break;
+                    case 1:
+                        download_label.innerHTML = 'Download as Image';
+                        break;
+                    case 2:
+                        download_label.innerHTML = 'Download as JSON';
+                        break;
+                    case 3:
+                        download_label.innerHTML = 'Download both as .Zip'
+                        break;
+                    default:
+                        download_label.innerHTML = 'Do not Download';
+                }
+            });
+            
+        </script>        
+    </body>
+</html>

@@ -1,0 +1,138 @@
+<!-- This code is an HTML document containing a form for generating a maze using different parameters.
+    The document contains a title and a style block, which defines the layout of the form.
+
+The form consists of two columns, each with a number of labels and input fields.
+The first column contains labels for the width, height, strictness probability,
+and weight probability of the maze. The second column contains corresponding input fields for these parameters.
+The second column also contains input fields for the file name to download, whether to display the generated maze image,
+and the type of file to download (image, JSON, or both).
+
+The script block at the end of the document contains event listeners for form submission and input changes.
+When the form is submitted, the script validates the input fields and displays error messages if necessary.
+The script also updates the label for the download input field based on the selected download type. -->
+<html>
+    <head>
+        <title>Maze Generator</title>
+        <style>
+            .form-row {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            .form-column {
+                flex-basis: 50%;
+                padding-right: 20px;
+                box-sizing: border-box;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            label, input {
+                margin-bottom: 10px;
+                display: block;
+            }
+            .error {
+                color: rgb(255, 0, 0);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>--Maze Generator--</h1>
+        <p>Generates a maze using a JSON format in which the top left corner = (0, 0) and the bottom right corner is (width-1, height-1)</p>
+        <form action="/generate_maze" method="GET">
+            <div class="form-row">
+                <div class="form-column">
+                    <p>The number of cells that the maze will have horizontally</p>
+                    <p>The number of cells that the maze will have vertically</p>
+                    <p>The probability that the maze will be stricter with the pathing</p>
+                    <p>The probability of spawning weighted directional cells with values (1-10)</p>
+                    <p>------------------------------------------------------------</p>
+                    <p>The names of the files to download. If File Name is null, returns UUID4</p>
+                    <p>Check to also display the generated maze image along with the JSON</p>
+                    <p>The maze files to download</p>
+                </div>
+                <div class="form-column">
+                    <label for="width">Width:</label>
+                    <input type="text" id="width" name="width">
+                    <label for="height">Height:</label>
+                    <input type="text" id="height" name="height">
+                    <label for="strict">Strictness Probability:</label>
+                    <input type="text" id="strict" name="strict">
+                    <label for="weight">Weight Probability:</label>
+                    <input type="text" id="weight" name="weight">
+                    <label for="file_name">File Name:</label>
+                    <input type="text" id="file_name" name="file_name">
+                    <label for="img_show">Display Generated Maze:</label>
+                    <input type="checkbox" id="img_show" name="img_show" value="true">
+                    <label for="download">Download Type:</label>
+                    <span id="download_label">Do not Download</span>
+                    <input type="range" id="download" name="download" min="0" max="3" step="1" value="0">
+                </div>
+            </div>
+        <input type="submit" value="Submit">
+        </form>
+        <script>
+            const form = document.querySelector('form');
+            const width = document.getElementById('width');
+            const height = document.getElementById('height');
+            const strict = document.getElementById('strict');
+            const weight = document.getElementById('weight');
+            const fileName = document.getElementById('file_name');
+            const img_show = document.getElementById('img_show');
+            const download = document.getElementById('download');
+            const download_label = document.getElementById('download_label');
+            const error = document.createElement('p');
+            error.classList.add('error');
+
+            form.addEventListener('submit', (event) => {
+                let hasErrors = false;
+                error.innerHTML = '';
+
+                if (isNaN(parseInt(width.value)) || parseInt(width.value) <= 0) {
+                    error.innerHTML += 'Width must be a positive integer.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseInt(height.value)) || parseInt(height.value) <= 0) {
+                    error.innerHTML += 'Height must be a positive integer.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseFloat(strict.value)) || parseFloat(strict.value) < 0 || parseFloat(strict.value) > 1) {
+                    error.innerHTML += 'Strictness probability must be a float between 0 and 1.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseFloat(weight.value)) || parseFloat(weight.value) < 0 || parseFloat(weight.value) > 1) {
+                    error.innerHTML += 'Weight probability must be a float between 0 and 1.<br>';
+                    hasErrors = true;
+                }
+
+                if (hasErrors) {
+                    event.preventDefault();
+                    form.appendChild(error);
+                }
+            });
+
+            download.addEventListener('input', () => {
+                switch (parseInt(download.value)) {
+                    case 0:
+                        download_label.innerHTML = 'Do not Download';
+                        break;
+                    case 1:
+                        download_label.innerHTML = 'Download as Image';
+                        break;
+                    case 2:
+                        download_label.innerHTML = 'Download as JSON';
+                        break;
+                    case 3:
+                        download_label.innerHTML = 'Download both as .Zip'
+                        break;
+                    default:
+                        download_label.innerHTML = 'Do not Download';
+                }
+            });
+        </script>
+    </body>
+</html>
