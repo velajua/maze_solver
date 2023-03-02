@@ -38,7 +38,7 @@ Heavily weighted maze:
 
 ## Supported Algorithms
 
-The app currently supports the following maze solving algorithms:
+The app currently supports the following maze solving algorithms (Which can be found in [`here`](path_finding.py):
 
 * Dijkstra's Algorithm
 * A* Algorithm
