@@ -28,7 +28,8 @@ async def main() -> Dict:
         A dictionary containing a message about the application.
     """
     return {"data": """This is a FastAPI implementation to create \
-and solve mazes through various algorithms!"""}
+and solve mazes through various algorithms!""", 'maze_generator':
+           '/maze_generator', 'maze_solver': '/uploud_maze'}
 
 
 @app.get('/maze_generator', response_class=HTMLResponse)
