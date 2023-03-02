@@ -20,6 +20,12 @@ This FastAPI app creates and solves mazes using various algorithms.
 ## Usage
 
 `http://localhost:8000/maze_generator` to generate the maze files.
+
+The maze generator can make various mazes, taking parameters for how strict the pathing is, and the probability of having weighted cells.
+
+![50x50 Weightless maze](example/0796e10d-f39e-47b7-9a5e-691593417269.png "50x50 Weightless Maze")
+
+
 `http://localhost:8000/upload_maze` to solve the maze file using a pathong algorithm.
 
 
