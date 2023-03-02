@@ -15,7 +15,7 @@ from path_finding import (djikstra, a_star, bfs, dfs, bellman_ford,
                           bidirectional_search, beam_search)
 
 app = FastAPI()
-FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else 'tmp/'
+FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else '/tmp/'
 
 
 @app.get('/')
