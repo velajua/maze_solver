@@ -31,6 +31,10 @@ Using Djikstra, the following solution can be obtained.
 
 ![50x50 Weightless Maze Solution](example/f9774cde-b79e-489c-a1b5-4c427c35cc65_maze_0_solution.png "50x50 Weightless Maze Solution")
 
+Heavily weighted maze:
+
+![100x100 Heavily Weighted Maze](example/a5a0fc42-5561-4098-8942-24b18db77596.png "100x100 Heavily Weighted Maze")
+
 
 ## Supported Algorithms
 
