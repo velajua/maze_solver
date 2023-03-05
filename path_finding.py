@@ -304,7 +304,7 @@ def bellman_ford(graph: Dict[Any, Dict[Any, Union[int, float]]], start: Any,
     for u in graph:
         for v, weight in graph[u].items():
             if distance[u] + weight < distance[v]:
-                raise ValueError("Graph contains a negative-weight cycle")
+                return {'error': 'Graph contains a negative-weight cycle'}
     current, path, cost = goal, [], 0
     while current != start:
         path.append(temp := current)
