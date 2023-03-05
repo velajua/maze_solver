@@ -58,6 +58,9 @@ Its solution along with the cost fo the solution from coordinates (0, 0) to coor
 The maze_solver currently supports the following maze solving algorithms (Which can be found in [`here`](path_finding.py):
 
 * Dijkstra's Algorithm
+    - The algorithm works by maintaining a set of tentative distances from the start node to each node in the graph. Initially, all distances are set to infinity, except the distance to the start node, which is set to 0. A priority queue is used to store the nodes and their tentative distances. In each iteration, the algorithm selects the node with the smallest tentative distance from the priority queue and explores its neighbors. For each neighbor, if the path through the current node is shorter than the current tentative distance, the neighbor's tentative distance is updated and the path is added to the priority queue. The algorithm continues until the destination node is reached or the priority queue is empty.
+
+    - The time complexity of Dijkstra's algorithm is O(E + V log V), where E is the number of edges and V is the number of vertices in the graph. The implementation above uses a priority queue to efficiently select the node with the smallest tentative distance, which gives it a time complexity of O(E log V).
 * A* Algorithm
 * Breadth-First Search
 * Depth-First Search
