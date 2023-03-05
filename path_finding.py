@@ -33,6 +33,8 @@ def floyd_warshall(graph: List[List[Union[int, float]]],
             is a node and the value is a dictionary of its neighbors
             and their weights if type is 'letters' or 'coords'.
     """
+    if type not in ['matrix', 'letters', 'coords']:
+        return f'type not allowed: {type}; matrix, letters, coords'
 
     def floyd_warshall_to_dict(matrix: List[List[Union[int, float]]],
                                type: str = 'letters') -> Dict[
