@@ -13,13 +13,14 @@ from fastapi.responses import StreamingResponse, HTMLResponse
 from maze_methods import generate_maze_, draw_maze, filter_maze_passages
 from path_finding import (djikstra, a_star, bfs, dfs, bellman_ford,
                           bidirectional_search, beam_search)
+from graph_methods import (random_letter_weighted_dict, draw_letter_weighted_dict)
 
 app = FastAPI()
-FILE_PREF = 'maze_data' if 'maze_algorithms' in os.getcwd() else '/tmp/'
+FILE_PREF = 'maze_data' if 'maze_solver' in os.getcwd() else '/tmp/'
 
 
 @app.get('/')
-async def main() -> Dict:
+async def main() -> HTMLResponse:
     """
     A FastAPI endpoint that returns a JSON response with a
     message about the application.
@@ -27,9 +28,10 @@ async def main() -> Dict:
     Returns:
         A dictionary containing a message about the application.
     """
-    return {"data": """This is a FastAPI implementation to create \
-and solve mazes through various algorithms!""", 'maze_generator':
-           '/maze_generator', 'maze_solver': '/upload_maze'}
+    with open(os.path.join('html_responses', 'home_page.html'),
+              'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_) 
 
 
 @app.get('/maze_generator', response_class=HTMLResponse)
@@ -238,6 +240,80 @@ async def maze_solver(file: UploadFile = Form(...),
             if download == 2 else 'zip'}/{
                 image_name.replace(FILE_PREF, '').replace(
                     '/', '').split('.')[0]}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+
+@app.get("/generate_dict", response_class=HTMLResponse)
+async def generate_dict() -> HTMLResponse:
+    """
+    A route for generating a dict graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a dict generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'dict_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
+
+
+@app.get("/dict_generator")
+async def dict_generator(num_nodes: int, num_edges: int,
+                      min_weight: int, max_weight: int,
+                      directional: Optional[bool] = False,
+                      name_: Union[str, None] = None,
+                      img_show: bool = False,
+                      download: int = 0) -> HTMLResponse:
+
+    delete_temp_files()
+    print(name_)
+    name_ = str(uuid4()) if not name_ else name_
+    print(name_)
+    
+    lettered_dict = random_letter_weighted_dict(
+        num_nodes, num_edges, min_weight, max_weight,
+        directional, name_)
+    print(lettered_dict)
+    maze_image, path_ = draw_letter_weighted_dict(
+        lettered_dict, name_=name_) if max_weight > 0 else draw_letter_weighted_dict(
+            lettered_dict, True, name_=name_)
+    if maze_image == 'Error':
+        return '400, Letter Dict failed'
+
+    buffer = io.BytesIO()
+    canvas = maze_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
+
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{lettered_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
         <script>
         function download__() {{
             var downloadLink = document.getElementById('download-link');

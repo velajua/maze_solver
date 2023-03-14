@@ -30,6 +30,10 @@ This [`repository`](https://github.com/velajua/maze_solver) contains the necessa
 
 ## Usage
 
+### A full demo can be found [`here`](https://maze-solver-4r64swfrtq-uc.a.run.app)
+
+## Maze Endpoints
+
 `http://localhost:8000/maze_generator` to generate the maze files.
 
 The maze generator can make various mazes, taking parameters for how strict the pathing is, and the probability of having weighted cells.

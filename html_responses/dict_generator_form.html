@@ -1,0 +1,142 @@
+<!-- This code is an HTML document containing a form for generating a lettered dictionary using different parameters.
+    The document contains a title and a style block, which defines the layout of the form.
+
+The form consists of two columns, each with a number of labels and input fields.
+The first column contains labels for the number of nodes, the number of edges, the minimum weight,
+the maximum weight, whether the lettered dictionary will have directionality, and the names of the files to download.
+The second column contains corresponding input fields for these parameters.
+The second column also contains input fields for whether to display the generated lettered dictionary image and the type of file to download (image, JSON, or both).
+
+The script block at the end of the document contains event listeners for form submission and input changes.
+When the form is submitted, the script validates the input fields and displays error messages if necessary.
+The script also updates the label for the download input field based on the selected download type. -->
+<html>
+    <head>
+        <title>Lettered Dictionary Generator</title>
+        <style>
+            .form-row {
+                display: flex;
+                flex-wrap: wrap;
+            }
+            .form-column {
+                flex-basis: 50%;
+                padding-right: 20px;
+                box-sizing: border-box;
+            }
+            form {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            label, input {
+                margin-bottom: 10px;
+                display: block;
+            }
+            .error {
+                color: rgb(255, 0, 0);
+            }
+        </style>
+    </head>
+    <body>
+        <h1>--Lettered Dictionary Generator--</h1>
+        <p>Generates a lettered dictionary using a JSON format for a defined number of nodes, edges and weights</p>
+        <form action="/dict_generator" method="GET">
+            <div class="form-row">
+                <div class="form-column">
+                    <p>The number of nodes that the lettered dictionary will have in (x, y) directions</p>
+                    <p>The number of edges that the lettered dictionary will have between nodes</p>
+                    <p>------------------------------------------------------</p>
+                    <p>The minimum weight that the lettered dictionary will have</p>
+                    <p>The maximum weight that the lettered dictionary will have</p>
+                    <p>If the lettered dictionary created will have directionality</p>
+                    <p>The names of the files to download. If File Name is null, returns UUID4</p>
+                    <p>Check to also display the generated lettered dictionary image along with the JSON</p>
+                    <p>The lettered dictionary files to download</p>
+                </div>
+                <div class="form-column">
+                    <label for="num_nodes">Number of Nodes:</label>
+                    <input type="text" id="num_nodes" name="num_nodes">
+                    <label for="num_edges">Number of Edges:</label>
+                    <input type="text" id="num_edges" name="num_edges">
+                    <label for="min_weight">Minimum Weight:</label>
+                    <input type="text" id="min_weight" name="min_weight">
+                    <label for="max_weight">Max Weight:</label>
+                    <input type="text" id="max_weight" name="max_weight">
+                    <label for="directional">Directional:</label>
+                    <input type="checkbox" id="directional" name="directional" value="true">
+                    <label for="name_">File Name:</label>
+                    <input type="text" id="name_" name="name_">
+                    <label for="img_show">Display Generated Maze:</label>
+                    <input type="checkbox" id="img_show" name="img_show" value="true">
+                    <label for="download">Download Type:</label>
+                    <span id="download_label">Do not Download</span>
+                    <input type="range" id="download" name="download" min="0" max="3" step="1" value="0">
+                </div>
+            </div>
+        <input type="submit" value="Submit">
+        </form>
+        <script>
+            const form = document.querySelector('form');
+            const num_nodes = document.getElementById('num_nodes');
+            const num_edges = document.getElementById('num_edges');
+            const min_weight = document.getElementById('min_weight');
+            const max_weight = document.getElementById('max_weight');
+            const directional = document.getElementById('directional');
+            const fileName = document.getElementById('name_');
+            const img_show = document.getElementById('img_show');
+            const download = document.getElementById('download');
+            const download_label = document.getElementById('download_label');
+            const error = document.createElement('p');
+            error.classList.add('error');
+
+            form.addEventListener('submit', (event) => {
+                let hasErrors = false;
+                error.innerHTML = '';
+
+                if (isNaN(parseInt(num_nodes.value)) || parseInt(num_nodes.value) <= 0) {
+                    error.innerHTML += 'Number of Nodes must be a positive integer.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseInt(num_edges.value)) || parseInt(num_edges.value) <= 0) {
+                    error.innerHTML += 'Number of Edges must be a positive integer.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseInt(min_weight.value)) || parseInt(min_weight.value) < 0) {
+                    error.innerHTML += 'Min Weight must be a positive integer.<br>';
+                    hasErrors = true;
+                }
+
+                if (isNaN(parseInt(max_weight.value)) || parseInt(max_weight.value) < 0 || parseInt(max_weight.value) < parseInt(min_weight.value)) {
+                    error.innerHTML += 'Max Weight must be a positive integer greater than Min Weight.<br>';
+                    hasErrors = true;
+                }
+
+                if (hasErrors) {
+                    event.preventDefault();
+                    form.appendChild(error);
+                }
+            });
+
+            download.addEventListener('input', () => {
+                switch (parseInt(download.value)) {
+                    case 0:
+                        download_label.innerHTML = 'Do not Download';
+                        break;
+                    case 1:
+                        download_label.innerHTML = 'Download as Image';
+                        break;
+                    case 2:
+                        download_label.innerHTML = 'Download as JSON';
+                        break;
+                    case 3:
+                        download_label.innerHTML = 'Download both as .Zip'
+                        break;
+                    default:
+                        download_label.innerHTML = 'Do not Download';
+                }
+            });
+        </script>
+    </body>
+</html>
