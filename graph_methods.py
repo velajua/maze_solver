@@ -230,3 +230,70 @@ def draw_random_coords_graph(
     fig.canvas.draw()
     fig.savefig(f := os.path.join(FILE_PREF, f"{name_}.png"))
     return fig, f
+
+
+def random_weighted_adjacency_matrix(num_nodes: int, num_edges: int,
+                                     min_weight: int, max_weight: int,
+                                     name_: str = None) -> List[List[int]]:
+    """
+    Generates a random weighted adjacency matrix for a graph with a
+    given number of nodes and edges. The weights of the edges are
+    randomly generated between the given minimum and maximum weights.
+
+    Args:
+    - num_nodes (int): The number of nodes in the graph.
+    - num_edges (int): The number of edges in the graph.
+    - min_weight (int): The minimum weight of an edge.
+    - max_weight (int): The maximum weight of an edge.
+    - name_ (str): The name of the file to write the adjacency matrix to.
+
+    Returns:
+    - List[List[int]]: The random weighted adjacency matrix for the graph.
+    """
+    adjacency_matrix = [[0] * num_nodes for _ in range(num_nodes)]
+    edges = set()
+    while len(edges) < num_edges:
+        u, v = random.sample(range(num_nodes), 2)
+        if u != v and (u, v) not in edges:
+            edges.add((u, v))
+            edges.add((v, u))
+            weight = random.randint(min_weight, max_weight)
+            adjacency_matrix[u][v] = weight
+            adjacency_matrix[v][u] = weight
+    with open(os.path.join(FILE_PREF, name_ + '.json'), 'w') as f:
+        f.write(str(adjacency_matrix))
+    return adjacency_matrix
+
+
+def draw_adjacency_matrix(matrix: List[List[int]],
+                          name_: str = 'matrix') -> Tuple[plt.Figure, str]:
+    """
+    Draws a graph's adjacency matrix with weighted edges.
+
+    Args:
+    - matrix (List[List[int]]): The adjacency matrix for the graph.
+    - name_ (str): The name to save the figure as.
+
+    Returns:
+    - Tuple[plt.Figure, str]: The figure object and the filename.
+    """
+    fig, ax = plt.subplots(figsize=(len(matrix)/2, len(matrix)/2))
+    nodes = [chr(65+i) for i in range(len(matrix))]
+    for i in range(len(matrix)):
+        for j in range(len(matrix[0])):
+            if matrix[i][j] > 0:
+                ax.plot([i, j], [j, i], 'bo-',
+                        linewidth=matrix[i][j]/2, markersize=10)
+                ax.annotate(str(matrix[i][j]), ((i+j)/2, (i+j)/2),
+                            fontsize=15)
+    for i, node in enumerate(nodes):
+        ax.annotate(node, (i, -0.1), xycoords='data', ha='center',
+                    va='center', color='black', fontsize=15)
+        ax.annotate(node, (-0.1, i), xycoords='data', ha='center',
+                    va='center', color='black', fontsize=15)
+    ax.axis('off')
+    if name_ == 'matrix':
+        name_ = str(uuid4()) + '_' + name_
+    fig.canvas.draw()
+    fig.savefig(f := os.path.join(FILE_PREF, f"{name_}.png"))
+    return fig, f

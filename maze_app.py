@@ -14,7 +14,8 @@ from maze_methods import generate_maze_, draw_maze, filter_maze_passages
 from path_finding import (djikstra, a_star, bfs, dfs, bellman_ford,
                           bidirectional_search, beam_search)
 from graph_methods import (random_letter_weighted_dict, draw_letter_weighted_dict,
-                           random_coords_graph, draw_random_coords_graph)
+                           random_coords_graph, draw_random_coords_graph,
+                           random_weighted_adjacency_matrix, draw_adjacency_matrix)
 
 app = FastAPI()
 FILE_PREF = 'maze_data' if 'maze_solver' in os.getcwd() else '/tmp/'
@@ -415,6 +416,89 @@ async def coords_generator(num_nodes: int, num_edges: int, min_weight: int,
             '' if img_show else '-->'}
         <p></p>
         <p>{coords_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+
+@app.get("/generate_matrix", response_class=HTMLResponse)
+async def generate_matrix() -> HTMLResponse:
+    """
+    A route for generating a matrix graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a matrix generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'matrix_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
+
+
+@app.get("/matrix_generator")
+async def matrix_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, name_: Union[str, None] = None,
+                         img_show: bool = False, download: int = 0) -> HTMLResponse:
+    """
+    Generates a matrix of weights,
+    and returns an HTML response containing the dictionary
+    and an image of the matrix.
+
+    Args:
+        num_nodes (int): The number of nodes in the matrix.
+        num_edges (int): The number of edges in the matrix.
+        min_weight (int): The minimum weight of an edge in the matrix.
+        max_weight (int): The maximum weight of an edge in the matrix.
+        name_ (str, optional): The name of the matrix. Defaults to None.
+        img_show (bool, optional): Whether the matrix image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the matrix. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
+
+    Returns:
+        HTMLResponse: An HTML response containing the coordinates
+        and an image of the matrix.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    
+    matrix_dict = random_weighted_adjacency_matrix(
+        num_nodes, num_edges, min_weight, max_weight, name_)
+    matrix_image, path_ = draw_adjacency_matrix(matrix_dict, name_=name_)
+
+    buffer = io.BytesIO()
+    canvas = matrix_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
+
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{matrix_dict}</p>
 
         <a id="download-link" href="/download/{
             'image' if download == 1 else 'text'
