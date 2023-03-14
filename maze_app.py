@@ -13,7 +13,8 @@ from fastapi.responses import StreamingResponse, HTMLResponse
 from maze_methods import generate_maze_, draw_maze, filter_maze_passages
 from path_finding import (djikstra, a_star, bfs, dfs, bellman_ford,
                           bidirectional_search, beam_search)
-from graph_methods import (random_letter_weighted_dict, draw_letter_weighted_dict)
+from graph_methods import (random_letter_weighted_dict, draw_letter_weighted_dict,
+                           random_coords_graph, draw_random_coords_graph)
 
 app = FastAPI()
 FILE_PREF = 'maze_data' if 'maze_solver' in os.getcwd() else '/tmp/'
@@ -270,30 +271,47 @@ async def generate_dict() -> HTMLResponse:
 
 
 @app.get("/dict_generator")
-async def dict_generator(num_nodes: int, num_edges: int,
-                      min_weight: int, max_weight: int,
-                      directional: Optional[bool] = False,
-                      name_: Union[str, None] = None,
-                      img_show: bool = False,
-                      download: int = 0) -> HTMLResponse:
+async def dict_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, directional: Optional[bool] = False,
+                         name_: Union[str, None] = None, img_show: bool = False,
+                         download: int = 0) -> HTMLResponse:
+    """
+    Generates a dictionary of letters and weights,
+    and returns an HTML response containing the dictionary
+    and an image of the graph.
 
+    Args:
+        num_nodes (int): The number of nodes in the graph.
+        num_edges (int): The number of edges in the graph.
+        min_weight (int): The minimum weight of an edge in the graph.
+        max_weight (int): The maximum weight of an edge in the graph.
+        directional (bool, optional): Whether the graph should be directional or not.
+            Defaults to False.
+        name_ (str, optional): The name of the graph. Defaults to None.
+        img_show (bool, optional): Whether the graph image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the graph. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
+
+    Returns:
+        HTMLResponse: An HTML response containing the dictionary
+        and an image of the graph.
+    """
     delete_temp_files()
-    print(name_)
     name_ = str(uuid4()) if not name_ else name_
-    print(name_)
     
     lettered_dict = random_letter_weighted_dict(
         num_nodes, num_edges, min_weight, max_weight,
         directional, name_)
-    print(lettered_dict)
-    maze_image, path_ = draw_letter_weighted_dict(
+    graph_image, path_ = draw_letter_weighted_dict(
         lettered_dict, name_=name_) if max_weight > 0 else draw_letter_weighted_dict(
             lettered_dict, True, name_=name_)
-    if maze_image == 'Error':
+    if graph_image == 'Error':
         return '400, Letter Dict failed'
 
     buffer = io.BytesIO()
-    canvas = maze_image.canvas
+    canvas = graph_image.canvas
     canvas.print_jpg(buffer)
     buffer.seek(0)
 
@@ -310,6 +328,93 @@ async def dict_generator(num_nodes: int, num_edges: int,
             '' if img_show else '-->'}
         <p></p>
         <p>{lettered_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+
+@app.get("/generate_coords", response_class=HTMLResponse)
+async def generate_coords() -> HTMLResponse:
+    """
+    A route for generating a coords graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a coords generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'coords_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
+
+
+@app.get("/coords_generator")
+async def coords_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, directional: Optional[bool] = False,
+                         name_: Union[str, None] = None, img_show: bool = False,
+                         download: int = 0) -> HTMLResponse:
+    """
+    Generates a dictionary of coords and weights,
+    and returns an HTML response containing the dictionary
+    and an image of the graph.
+
+    Args:
+        num_nodes (int): The number of nodes in the graph.
+        num_edges (int): The number of edges in the graph.
+        min_weight (int): The minimum weight of an edge in the graph.
+        max_weight (int): The maximum weight of an edge in the graph.
+        directional (bool, optional): Whether the graph should be directional or not.
+            Defaults to False.
+        name_ (str, optional): The name of the graph. Defaults to None.
+        img_show (bool, optional): Whether the graph image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the graph. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
+
+    Returns:
+        HTMLResponse: An HTML response containing the coordinates
+        and an image of the graph.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    
+    coords_dict = random_coords_graph(
+        num_nodes, num_edges, min_weight, max_weight,
+        directional, name_)
+    graph_image, path_ = draw_random_coords_graph(coords_dict, name_=name_)
+
+    buffer = io.BytesIO()
+    canvas = graph_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
+
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{coords_dict}</p>
 
         <a id="download-link" href="/download/{
             'image' if download == 1 else 'text'
