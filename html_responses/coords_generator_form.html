@@ -38,7 +38,10 @@ The script also updates the label for the download input field based on the sele
         </style>
     </head>
     <body>
-        <h1>--Coordinate Dictionary Generator--</h1>
+        <div style="background-color: #4CAF50; padding: 10px;">
+            <h1 style="color: white;">--Coordinate Dictionary Generator--</h1>
+        </div>
+        <div style="background-color: #f2f2f2; padding: 10px;">
         <p>Generates a coordinate dictionary using a JSON format for a defined number of nodes, edges and weights</p>
         <form action="/coords_generator" method="GET">
             <div class="form-row">
@@ -75,6 +78,7 @@ The script also updates the label for the download input field based on the sele
             </div>
         <input type="submit" value="Submit">
         </form>
+    </div>
         <script>
             const form = document.querySelector('form');
             const num_nodes = document.getElementById('num_nodes');
