@@ -22,7 +22,7 @@ This [`repository`](https://github.com/velajua/maze_solver) contains the necessa
 ### Docker local
 
 1. Clone this repository.
-2. Build the container using the following command: `docker build -t maze_solver .`.
+2. Build the container using the following command: `docker build -t maze_solver .`. [//]: # (docker tag maze_solver velajua/maze_solver:latest)
 3. Run the container using the following command: `docker run -it -p 8000:8000 maze_solver`.
 4. Navigate to `http://localhost:8000` in your web browser.
 5. Generate maze files usign the form provided in `/maze_generator`.
