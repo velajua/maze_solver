@@ -19,7 +19,7 @@ This [`repository`](https://github.com/velajua/maze_solver) contains the necessa
 5. Generate maze files usign the form provided in `/maze_generator`.
 6. Upload a maze file and select a pathing algorithm to see the solution in `/upload_maze`.
 
-### Docker
+### Docker local
 
 1. Clone this repository.
 2. Build the container using the following command: `docker build -t maze_solver .`.
@@ -27,6 +27,14 @@ This [`repository`](https://github.com/velajua/maze_solver) contains the necessa
 4. Navigate to `http://localhost:8000` in your web browser.
 5. Generate maze files usign the form provided in `/maze_generator`.
 6. Upload a maze file and select a pathing algorithm to see the solution in `/upload_maze`.
+
+### Docker
+
+1. Pull the image from Dockerhub: `docker pull velajua/maze_solver:latest`
+2. Run the container using the following command: `docker run -it -p 8000:8000 maze_solver`.
+3. Navigate to `http://localhost:8000` in your web browser.
+4. Generate maze files usign the form provided in `/maze_generator`.
+5. Upload a maze file and select a pathing algorithm to see the solution in `/upload_maze`.
 
 ## Usage
 
