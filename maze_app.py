@@ -1,245 +1,558 @@
+import io
 import os
-import sys
-import json
-import time
-import requests
-import numpy as np
+import base64
+import zipfile
 
-from sudoku import Sudoku
-from datetime import datetime
-from flask import Flask, send_file
-from random import randint, normalvariate
-from PIL import Image, ImageDraw, ImageFont
+from uuid import uuid4
 
-from google.cloud import secretmanager
+from typing import Dict, Union, Optional, List
 
-app = Flask(__name__)
-FILE_PREF = '' if 'sudoku' in os.getcwd() else '/tmp/'
+from fastapi import FastAPI, Response, UploadFile, Form
+from fastapi.responses import StreamingResponse, HTMLResponse
 
+from maze_methods import generate_maze_, draw_maze, filter_maze_passages
+from path_finding import (djikstra, a_star, bfs, dfs, bellman_ford,
+                          bidirectional_search, beam_search)
+from graph_methods import (random_letter_weighted_dict, draw_letter_weighted_dict,
+                           random_coords_graph, draw_random_coords_graph,
+                           random_weighted_adjacency_matrix, draw_adjacency_matrix)
 
-def create_sudoku(width, height, difficulty):
-    puzzle = Sudoku(width, height).difficulty(difficulty)
-    puzzle_data = puzzle.board, puzzle.height, puzzle.width
-    solution = puzzle.solve()
-    solution_data = solution.board, solution.height, solution.width
-    return puzzle_data, solution_data
+app = FastAPI()
+FILE_PREF = 'maze_data' if 'maze_solver' in os.getcwd() else '/tmp/'
 
 
-def draw_sudoku(board, height, width, cell_size=60, margin=20, line_width=3, cluster_line_width=6):
-    rows = len(board)
-    cols = len(board[0])
-    img_width = cols * cell_size + 2 * margin
-    img_height = rows * cell_size + 2 * margin
-    img = Image.new('RGB', (img_width, img_height), color='white')
-    draw = ImageDraw.Draw(img)
-    for i in range(rows + 1):
-        lw = cluster_line_width if i % height == 0 else line_width
-        draw.line((margin, margin + i * cell_size, img_width - margin, margin + i * cell_size), fill='black', width=lw)
-    for j in range(cols + 1):
-        lw = cluster_line_width if j % width == 0 else line_width
-        draw.line((margin + j * cell_size, margin, margin + j * cell_size, img_height - margin), fill='black', width=lw)
-    try:
-        font = ImageFont.truetype("arial.ttf", int(cell_size * 0.7))
-    except IOError:
-        font = ImageFont.load_default()
-    for i, row in enumerate(board):
-        for j, num in enumerate(row):
-            if num is not None:
-                x = margin - (12 if num > 9 else 0) + j * cell_size + cell_size // 3
-                y = margin -7 + i * cell_size + cell_size // 4
-                draw.text((x, y), str(num), fill='black', font=font)
-    return img
+@app.get('/')
+async def main() -> HTMLResponse:
+    """
+    A FastAPI endpoint that returns a JSON response with a
+    message about the application.
+
+    Returns:
+        A dictionary containing a message about the application.
+    """
+    with open(os.path.join('html_responses', 'home_page.html'),
+              'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_) 
 
 
-def load_secrets():
-    client = secretmanager.SecretManagerServiceClient()
-    project_id = "31722434708"
-    secret_id = "insta-sudoku-daily"
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    secret_payload = response.payload.data.decode("UTF-8")
-    secret_payload = secret_payload.replace("'", '"')
-    return json.loads(secret_payload)
+@app.get('/maze_generator', response_class=HTMLResponse)
+async def maze_generator() -> HTMLResponse:
+    """
+    Returns the HTML response for the maze generator form.
+
+    Returns:
+        HTMLResponse: An HTML response containing the maze generator form.
+    """
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    with open(os.path.join('html_responses', 'maze_generator_form.html'),
+              'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_, headers=headers)
 
 
-def update_secrets(old_secret, new_access_token):
-    client = secretmanager.SecretManagerServiceClient()
-    project_id = "31722434708"
-    secret_id = "insta-sudoku-daily"
-    secret_name = f"projects/{project_id}/secrets/{secret_id}"
-    old_secret['access_token'] = new_access_token
-    updated_secret_payload = json.dumps(old_secret)
-    response = client.add_secret_version(request={"parent": secret_name, "payload": {"data": updated_secret_payload.encode("UTF-8")}})
-    new_version_name = response.name
-    versions = client.list_secret_versions(request={"parent": secret_name})
-    for version in versions:
-        if version.name != new_version_name and version.state != secretmanager.SecretVersion.State.DESTROYED:
-            client.destroy_secret_version(request={"name": version.name})
+@app.get("/download/{type_}/{name_}")
+async def stream_image(type_: str, name_: str):
+    """
+    This endpoint serves for downloading files generated by the maze generator.
+
+    Parameters:
+    -----------
+    type_: str
+        Type of file to download. Possible values: "image", "text" or "zip".
+    name_: str
+        Name of the file to download.
+
+    Returns:
+    --------
+    Union[StreamingResponse, Response, FileResponse]
+        The file to be downloaded in the appropriate format,
+        depending on the `type_` parameter.
+    """
+    if type_ == 'image':
+        with open(os.path.join(FILE_PREF, f'{name_}.png'), 'rb') as f:
+            image_data = f.read()
+        response = StreamingResponse(io.BytesIO(image_data),
+                                     media_type="image/jpeg")
+        response.headers["Content-Disposition"
+                         ] = f'attachment; filename="{name_}.png"'
+        response.headers["Cache-Control"
+                         ] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        delete_temp_files()
+        return response
+    elif type_ == 'text':
+        with open(os.path.join(FILE_PREF, f'{name_}.json'), 'rb') as f:
+            maze_dict = eval(f.read())
+        response = Response(content=str(maze_dict))
+        response.headers["Content-Disposition"
+                         ] = f"attachment; filename={name_}.json"
+        response.headers["Content-Type"] = "text/plain"
+        delete_temp_files()
+        return response
+    elif type_ == 'zip':
+        file_list = [os.path.join(FILE_PREF, f'{name_}.png'),
+                     os.path.join(FILE_PREF, f'{name_}.json')]
+        zip_ = zipfiles(file_list)
+        delete_temp_files()
+        return zip_
 
 
-def refresh_token(app_id, app_secret, old_token):
-    url = f"https://graph.facebook.com/v20.0/oauth/access_token?grant_type=fb_exchange_token&client_id={app_id}&client_secret={app_secret}&fb_exchange_token={old_token}"
-    response = requests.get(url)
-    new_token_data = response.json()
-    new_token = new_token_data.get("access_token")
-    if new_token:
-        return new_token
-    else:
-        raise Exception(f"Error: {new_token_data}")
+@app.get('/generate_maze')
+async def generate_maze(width: int, height: int, strict: float,
+                        weight: float, name_: Union[str, None] = None,
+                        img_show: bool = False, download: int = 0
+                        ) -> HTMLResponse:
+    """
+    Generates a maze with the given width and height, using the given `strict`
+    value and `weight` probability to add weights to the maze edges.
+    If `name_` is not provided, a random UUID will be generated to
+    name the maze. If `img_show` is True, the maze image will be displayed in
+    the HTML response. If `download` is non-zero, the corresponding file(s)
+    will be available for download. Returns an HTMLResponse containing the
+    generated maze and options for downloading it in various formats.
+
+    :param width: The width of the maze.
+    :param height: The height of the maze.
+    :param strict: The strictness of the maze.
+    :param weight: The probability of adding weights to the maze edges.
+    :param name_: The name of the maze.
+    :param img_show: A flag indicating whether the maze image should be
+        displayed.
+    :param download: A flag indicating whether files should be available
+        for download.
+    :return: An HTMLResponse containing the generated maze and
+        download options.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    maze_dict: Dict = generate_maze_(width=width, height=height, strict=strict,
+                                     add_weights_prob=weight, name_=name_)
+    maze_image, _ = draw_maze(maze_dict, name_=name_)
+
+    buffer = io.BytesIO()
+    maze_image.save(buffer, format="JPEG")
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{maze_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
-def verify_token_data(secret):
-    debug_url = f"https://graph.facebook.com/v20.0/debug_token?input_token={secret['access_token']}&access_token={secret['access_token']}"
-    response = requests.get(debug_url)
-    token_data = response.json()
-    if response.status_code == 200:
-        expiration_datetime = datetime.fromtimestamp(token_data['data']['data_access_expires_at'])
-        if (expiration_datetime - datetime.now()).days < 7:
-            new_token = refresh_token(secret['app_id'], secret['app_secret'], secret['access_token'])
-            update_secrets(secret, new_token)
-    else:
-        raise Exception(f"Error: {token_data}")
+@app.get("/upload_maze", response_class=HTMLResponse)
+async def upload_maze() -> HTMLResponse:
+    """
+    A route for uploading a maze.
+
+    Returns:
+        HTMLResponse: An HTML response with a maze uploader form.
+    """
+    with open(os.path.join('html_responses', 'maze_uploader.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
 
 
-def normal_random_0_to_100(mean=50, stddev=15, lower=0, upper=100):
-    while True:
-        value = normalvariate(mean, stddev)
-        if lower <= value <= upper:
-            return value
+@app.post("/maze_solver")
+async def maze_solver(file: UploadFile = Form(...),
+                      solve_algorithm: int = Form(...),
+                      start_coords: str = Form(...),
+                      end_coords: str = Form(...),
+                      img_show: Optional[bool] = Form(False),
+                      download: int = Form(...)
+                      ) -> HTMLResponse:
+    """
+    A route for solving a maze.
+
+    Args:
+        file (UploadFile): The uploaded maze file.
+        solve_algorithm (int): The algorithm used to solve the maze.
+        start_coords (str): The starting coordinates of the maze in
+            the form "x,y".
+        end_coords (str): The ending coordinates of the maze in the form "x,y".
+        img_show (Optional[bool], optional): Whether or not to display the
+            maze image. Defaults to False.
+        download (int): The type of download to offer after solving the maze.
+            0 for no download, 1 for image only, 2 for text only, 3 for both.
+
+    Returns:
+        HTMLResponse: An HTML response with the solved maze image, path,
+        and download link.
+    """
+    file_contents = await file.read()
+
+    start_coords = [int(i) for i in start_coords.split(',')]
+    start_coords = (start_coords[0], start_coords[1])
+    end_coords = [int(i) for i in end_coords.split(',')]
+    end_coords = (end_coords[0], end_coords[1])
+
+    methods_ = [djikstra, a_star, bfs, dfs, bellman_ford,
+                bidirectional_search, beam_search]
+    path = methods_[solve_algorithm](filter_maze_passages(eval(file_contents)),
+                                     start_coords, end_coords)
+    maze_image, image_name = draw_maze(eval(file_contents), path)
+    image_name = image_name.replace(FILE_PREF, '').replace(
+        '/', '').split('.')[0].replace('\\', '')
+    with open(os.path.join(FILE_PREF, image_name + '.json'), 'w') as f:
+        f.write(str(path))
+
+    buffer = io.BytesIO()
+    maze_image.save(buffer, format="JPEG")
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{path}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{
+                image_name.replace(FILE_PREF, '').replace(
+                    '/', '').split('.')[0]}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
-@app.route('/', methods=['GET'])
-def main_caller():
-    return "Main Page", 200
+@app.get("/generate_dict", response_class=HTMLResponse)
+async def generate_dict() -> HTMLResponse:
+    """
+    A route for generating a dict graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a dict generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'dict_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
 
 
-@app.route('/upload_sudokus', methods=['GET'])
-def upload_sudokus():
-    width=randint(2, 5)
-    height=randint(2, 4) if width == 5 else randint(3, 5) if width == 2 else randint(3, 4)
-    difficulty=normal_random_0_to_100()/100
-    puzzle_data, solution_data = create_sudoku(width, height, difficulty)
+@app.get("/dict_generator")
+async def dict_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, directional: Optional[bool] = False,
+                         name_: Union[str, None] = None, img_show: bool = False,
+                         download: int = 0) -> HTMLResponse:
+    """
+    Generates a dictionary of letters and weights,
+    and returns an HTML response containing the dictionary
+    and an image of the graph.
 
-    empty = 0; full = 0
-    for i in puzzle_data[0]:
-        for j in i:
-            if not j:
-                empty += 1
-            else:
-                full += 1
-    caption = f"""Enjoy today's ({datetime.now().strftime('%d %B %Y')})
-Sudoku with cells {height}x{width} of difficulty {int(difficulty*100)}/100,
-which has {full}/{empty + full} numbers.
-.
-.
-.
-#sudoku #sudokutime #sudokupuzzles #puzzle #puzzles #sudokuaddict #math
-#kidsactivities #onlineclasses #brainteasers #funactivities #trainyourbrain
-#maths #rubikscube #kidsactivity #education #puzzleaddict #activitiesforkids
-#mathematics #challengeyourself #crossword #onlinepuzzles #numberpuzzles
-#online #brainpuzzles #numberlandpuzzles #secondaryteacher #rjsclasses
-#sudokoclass #onlinecoaching
-"""
-    print(caption, file=sys.stdout)
+    Args:
+        num_nodes (int): The number of nodes in the graph.
+        num_edges (int): The number of edges in the graph.
+        min_weight (int): The minimum weight of an edge in the graph.
+        max_weight (int): The maximum weight of an edge in the graph.
+        directional (bool, optional): Whether the graph should be directional or not.
+            Defaults to False.
+        name_ (str, optional): The name of the graph. Defaults to None.
+        img_show (bool, optional): Whether the graph image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the graph. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
 
-    puzzle_img = draw_sudoku(*puzzle_data)
-    solution_img = draw_sudoku(*solution_data)
-    solution_img = np.array(solution_img)
-    noise = np.random.randint(0, 2, solution_img.shape, dtype='uint8')
-    solution_img = np.clip(solution_img + noise, 0, 255)
-    solution_img = Image.fromarray(solution_img)
-    solution_img = solution_img.rotate(180)
+    Returns:
+        HTMLResponse: An HTML response containing the dictionary
+        and an image of the graph.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    
+    lettered_dict = random_letter_weighted_dict(
+        num_nodes, num_edges, min_weight, max_weight,
+        directional, name_)
+    graph_image, path_ = draw_letter_weighted_dict(
+        lettered_dict, name_=name_) if max_weight > 0 else draw_letter_weighted_dict(
+            lettered_dict, True, name_=name_)
+    if graph_image == 'Error':
+        return '400, Letter Dict failed'
 
-    puzzle_img.save(f"{FILE_PREF}sudoku_puzzle.png")
-    solution_img.save(f"{FILE_PREF}sudoku_solution.png")
-    print('Generated Sudoku pair', file=sys.stdout)
+    buffer = io.BytesIO()
+    canvas = graph_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
 
-    secret = load_secrets()
-    access_token = secret.get('access_token')
-    instagram_user_id = secret.get('instagram_user_id')
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
 
-    image_urls = [
-        "https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_puzzle.png",
-        "https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_solution.png"
-    ]
-    creation_ids = []
-    for image_url in image_urls:
-        upload_url = f"https://graph.facebook.com/v20.0/{instagram_user_id}/media"
-        payload = {
-            'image_url': image_url,
-            'is_carousel_item': 'true',
-            'access_token': access_token
-        }
-        upload_response = requests.post(upload_url, data=payload)
-        upload_data = upload_response.json()
-        creation_id = upload_data.get("id")
-        if creation_id:
-            creation_ids.append(creation_id)
-            print(f"Uploaded image, Creation ID: {creation_id}", file=sys.stdout)
-        else:
-            print(f"Error uploading image: {upload_data}", file=sys.stdout)
-    if len(creation_ids) == len(image_urls):
-        carousel_payload = {
-            'access_token': access_token,
-            'caption': caption,
-            'media_type': 'CAROUSEL',
-            'children': ','.join(creation_ids)
-        }
-        carousel_url = f"https://graph.facebook.com/v20.0/{instagram_user_id}/media"
-        carousel_response = requests.post(carousel_url, data=carousel_payload)
-        carousel_data = carousel_response.json()
-        if 'id' in carousel_data:
-            carousel_creation_id = carousel_data['id']
-            print(f"Carousel container created with ID: {carousel_creation_id}", file=sys.stdout)
-        else:
-            print(f"Error creating carousel container: {carousel_data}", file=sys.stdout)
-        publish_url = f"https://graph.facebook.com/v20.0/{instagram_user_id}/media_publish"
-        publish_payload = {
-            'creation_id': carousel_creation_id,
-            'access_token': access_token
-        }
-        publish_response = requests.post(publish_url, data=publish_payload)
-        publish_data = publish_response.json()
-        if 'id' in publish_data:
-            print(f"Carousel post published with ID: {publish_data['id']}", file=sys.stdout)
-        else:
-            print(f"Error publishing carousel post: {publish_data}", file=sys.stdout)
-    else:
-        print("Not all images were uploaded successfully.", file=sys.stdout)
-    verify_token_data(secret)
-    return "Data Uploaded", 200
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{lettered_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
-@app.route('/sudoku_puzzle.png', methods=['GET'])
-def serve_puzzle():
-    image_path = f'{FILE_PREF}sudoku_puzzle.png'
-    if os.path.exists(image_path):
-        return send_file(image_path, mimetype='image/png')
-    else:
-        time.sleep(1)
-        if os.path.exists(image_path):
-            return send_file(image_path, mimetype='image/png')
-        else:
-            return "Image not found", 404
+@app.get("/generate_coords", response_class=HTMLResponse)
+async def generate_coords() -> HTMLResponse:
+    """
+    A route for generating a coords graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a coords generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'coords_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
 
 
-@app.route('/sudoku_solution.png', methods=['GET'])
-def serve_solution():
-    image_path = f'{FILE_PREF}sudoku_solution.png'
-    if os.path.exists(image_path):
-        return send_file(image_path, mimetype='image/png')
-    else:
-        time.sleep(1)
-        if os.path.exists(image_path):
-            return send_file(image_path, mimetype='image/png')
-        else:
-            return "Image not found", 404
+@app.get("/coords_generator")
+async def coords_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, directional: Optional[bool] = False,
+                         name_: Union[str, None] = None, img_show: bool = False,
+                         download: int = 0) -> HTMLResponse:
+    """
+    Generates a dictionary of coords and weights,
+    and returns an HTML response containing the dictionary
+    and an image of the graph.
+
+    Args:
+        num_nodes (int): The number of nodes in the graph.
+        num_edges (int): The number of edges in the graph.
+        min_weight (int): The minimum weight of an edge in the graph.
+        max_weight (int): The maximum weight of an edge in the graph.
+        directional (bool, optional): Whether the graph should be directional or not.
+            Defaults to False.
+        name_ (str, optional): The name of the graph. Defaults to None.
+        img_show (bool, optional): Whether the graph image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the graph. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
+
+    Returns:
+        HTMLResponse: An HTML response containing the coordinates
+        and an image of the graph.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    
+    coords_dict = random_coords_graph(
+        num_nodes, num_edges, min_weight, max_weight,
+        directional, name_)
+    graph_image, path_ = draw_random_coords_graph(coords_dict, name_=name_)
+
+    buffer = io.BytesIO()
+    canvas = graph_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
+
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{coords_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
 
 
-@app.route('/logo.jpeg', methods=['GET'])
-def serve_logo():
-    image_path = 'logo.jpeg'
-    if os.path.exists(image_path):
-        return send_file(image_path, mimetype='image/png')
-    else:
-        return "Image not found", 404
+@app.get("/generate_matrix", response_class=HTMLResponse)
+async def generate_matrix() -> HTMLResponse:
+    """
+    A route for generating a matrix graph.
+
+    Returns:
+        HTMLResponse: An HTML response with a matrix generator form.
+    """
+    with open(os.path.join('html_responses',
+                           'matrix_generator_form.html'), 'r') as f:
+        response_ = f.read()
+    return HTMLResponse(response_)
+
+
+@app.get("/matrix_generator")
+async def matrix_generator(num_nodes: int, num_edges: int, min_weight: int,
+                         max_weight: int, name_: Union[str, None] = None,
+                         img_show: bool = False, download: int = 0) -> HTMLResponse:
+    """
+    Generates a matrix of weights,
+    and returns an HTML response containing the dictionary
+    and an image of the matrix.
+
+    Args:
+        num_nodes (int): The number of nodes in the matrix.
+        num_edges (int): The number of edges in the matrix.
+        min_weight (int): The minimum weight of an edge in the matrix.
+        max_weight (int): The maximum weight of an edge in the matrix.
+        name_ (str, optional): The name of the matrix. Defaults to None.
+        img_show (bool, optional): Whether the matrix image should be shown or not.
+            Defaults to False.
+        download (int, optional): Whether to download the image, text,
+            or zip file of the matrix. 0 = no download, 1 = image download,
+            2 = text download, 3 = zip download (image and text). Defaults to 0.
+
+    Returns:
+        HTMLResponse: An HTML response containing the coordinates
+        and an image of the matrix.
+    """
+    delete_temp_files()
+    name_ = str(uuid4()) if not name_ else name_
+    
+    matrix_dict = random_weighted_adjacency_matrix(
+        num_nodes, num_edges, min_weight, max_weight, name_)
+    matrix_image, path_ = draw_adjacency_matrix(matrix_dict, name_=name_)
+
+    buffer = io.BytesIO()
+    canvas = matrix_image.canvas
+    canvas.print_jpg(buffer)
+    buffer.seek(0)
+
+    with open(path_, "wb") as f:
+        f.write(buffer.read())
+    image_data = buffer.getvalue()
+    image_base64 = base64.b64encode(image_data).decode()
+
+    return HTMLResponse(f"""
+    <html>
+    <body {'onload="download__()"' if download != 0 else delete_temp_files()}>
+        {'' if img_show else '<!--'
+        }<img src="data:image/jpeg;base64,{image_base64}" />{
+            '' if img_show else '-->'}
+        <p></p>
+        <p>{matrix_dict}</p>
+
+        <a id="download-link" href="/download/{
+            'image' if download == 1 else 'text'
+            if download == 2 else 'zip'}/{name_}" style="display:none"></a>
+        <script>
+        function download__() {{
+            var downloadLink = document.getElementById('download-link');
+            downloadLink.click();
+        }}
+        </script>
+    </body>
+    </html>
+    """, headers={
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    })
+
+
+def delete_temp_files() -> None:
+    """
+    Deletes all temporary files in the specified file prefix directory.
+    """
+    for filename in os.listdir(FILE_PREF):
+        file_path = os.path.join(FILE_PREF, filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Error deleting file {file_path}: {e}")
+
+
+def zipfiles(file_list: List[str]) -> StreamingResponse:
+    """
+    Creates a zip file containing the files in the specified
+    list of file paths.
+
+    Args:
+    file_list (List[str]): A list of file paths to be zipped.
+
+    Returns:
+    StreamingResponse: A streaming response that is a zip file
+    containing the specified files.
+    """
+    io_ = io.BytesIO()
+    zip_sub_dir = FILE_PREF
+    zip_filename = zip_sub_dir.replace('/', '') + '.zip'
+    with zipfile.ZipFile(io_, mode='w',
+                         compression=zipfile.ZIP_DEFLATED) as zip:
+        for fpath in file_list:
+            zip.write(fpath)
+        zip.close()
+    return StreamingResponse(
+        iter([io_.getvalue()]),
+        media_type="application/x-zip-compressed",
+        headers={"Content-Disposition": f"attachment;filename={zip_filename}"}
+    )
