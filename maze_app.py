@@ -159,8 +159,8 @@ which has {full}/{empty + full} numbers.
     instagram_user_id = secret.get('instagram_user_id')
 
     image_urls = [
-        "https://https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_puzzle.png",
-        "https://https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_solution.png"
+        "https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_puzzle.png",
+        "https://instagram-sudoku-deployer-4r64swfrtq-uc.a.run.app/sudoku_solution.png"
     ]
     creation_ids = []
     for image_url in image_urls:
